@@ -5,6 +5,7 @@
 
 import paho.mqtt.client as mqtt
 import random, time, json
+import signal, sys
 import colorsys
 
 # What lights to control
@@ -21,9 +22,11 @@ base_topic = "zigbee2mqtt"
 mqtt_server = "127.0.0.1"
 mqtt_port = 1883
 
+# Connect to the MQTT server
 client = mqtt.Client()
 client.connect(mqtt_server, mqtt_port, 60)
 
+# Send the same message to each light's topic
 def send_all(message):
    if isinstance(message, dict):
       message = json.dumps(message)
@@ -44,6 +47,15 @@ def random_colour():
 # Make sure the lights are on
 send_all({"state":"on"})
 
+# Switch lights off on exit
+def signal_handler(sig, frame):
+   print('Shutting down')
+   send_all({"state":"off"})
+   client.disconnect()
+   sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
+
+# Keep picking new colours between pauses
 while True:
   rgb = random_colour()
   if verbose:
