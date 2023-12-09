@@ -4,14 +4,16 @@
 # https://www.zigbee2mqtt.io/devices/ZB-RGBCW.html#light
 
 import paho.mqtt.client as mqtt
-import random, time, json
+import random, json, time
 import signal, sys
 import colorsys
 
 # What lights to control
 lights = ["Floor0/Dining/LightLeft","Floor0/Dining/LightRight"]
+# What is the minimum change in colour each time?
+min_change = 0.2
 # How long to spend changing each colour
-transition = 4
+transition = 5
 # How long between colour changes (needs to include transition!)
 change_every = transition*2
 # Should we report what colour we're picking next?
@@ -34,14 +36,18 @@ def send_all(message):
       topic = "%s/%s/set" % (base_topic, light)
       client.publish(topic, payload=message)
 
+last_h = 0.0
 def random_colour():
-   # Pick a random HSV colour
+   # Pick a "random" HSV colour
+   # H needs to change by the minimum amount
    # Prefer a high V for more brigh colours
    # Prefer a high S for less white
-   h = random.random()
+   global last_h
+   h = (last_h + random.uniform(min_change, 1-min_change)) % 1.0
    s = random.uniform(0.5, 1.0)
    v = random.uniform(0.5, 1.0)
    rgb = colorsys.hsv_to_rgb(h, s, v)
+   last_h = h
    return [int(c*255) for c in rgb]
 
 # Make sure the lights are on
