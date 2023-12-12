@@ -5,7 +5,7 @@
 # https://www.zigbee2mqtt.io/devices/ZB-RGBCW.html#light
 
 import paho.mqtt.client as mqtt
-import random, json, time
+import random, json, math, time
 import signal, sys
 import numpy
 
@@ -31,8 +31,8 @@ mqtt_server = "127.0.0.1"
 mqtt_port = 1883
 
 # Connect to the MQTT server
-##client = mqtt.Client()
-##client.connect(mqtt_server, mqtt_port, 60)
+client = mqtt.Client()
+client.connect(mqtt_server, mqtt_port, 60)
 
 # Send the same message to each light's topic
 def send_all(message):
@@ -40,23 +40,22 @@ def send_all(message):
       message = json.dumps(message)
    for light in lights:
       topic = "%s/%s/set" % (base_topic, light)
-      #client.publish(topic, payload=message)
+      client.publish(topic, payload=message)
       time.sleep(0.05)
 
 
 # How many transitions to have, and how long?
-# TODO
-wakeup_changes = 5
-finish_changes = 2
+wakeup_changes = min(20, math.ceil(wakeup_seconds/minimum_pause))
+finish_changes = min(10, math.ceil(finish_seconds/minimum_pause))
+wakeup_pause = wakeup_seconds/wakeup_changes
+finish_pause = finish_seconds/finish_changes
 
 # Calculate the transitions
 wakeups = zip(
-   numpy.linspace(0,wakeup_seconds,wakeup_changes,dtype="int"),
    numpy.linspace(colour_temp_range[0],colour_temp_range[1],wakeup_changes,dtype="int"),
    numpy.linspace(brightness_range[0],brightness_range[1],wakeup_changes,dtype="int")
 )
 finishes = zip(
-   numpy.linspace(0,finish_seconds,finish_changes,dtype="int"),
    numpy.full((finish_changes),colour_temp_range[1],dtype="int"),
    numpy.linspace(brightness_range[1],brightness_range[0],finish_changes,dtype="int")
 )
@@ -77,13 +76,13 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 # Do the wakeup, then the finish
-for stage,data in (("Wakeup",wakeups),("Finish",finishes)):
+for stage,pause,data in (
+        ("Wakeup",wakeup_pause,wakeups),("Finish",finish_pause,finishes)):
   if verbose:
-     print(stage)
-  for pause, temp, bright in data:
-     # TODO pause = pause before
+     print("%s - pause %1.1f" % (stage,pause))
+  for temp, bright in data:
      if verbose:
-        print("Colour Temperature %d, Brightness %d, pause %d" % (temp, bright, pause))
+        print(" * Colour Temperature %d, Brightness %d" % (temp, bright))
      send_all( as_json(temp,bright) )
      time.sleep(pause)
 
