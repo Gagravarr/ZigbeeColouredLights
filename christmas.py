@@ -35,6 +35,7 @@ def send_all(message):
    for light in lights:
       topic = "%s/%s/set" % (base_topic, light)
       client.publish(topic, payload=message)
+      time.sleep(0.05)
 
 last_h = 0.0
 def random_colour():
