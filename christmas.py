@@ -3,8 +3,7 @@
 # For RGB-CCT LED strips
 # https://www.zigbee2mqtt.io/devices/ZB-RGBCW.html#light
 
-import paho.mqtt.client as mqtt
-import signal, sys
+import signal
 from helpers import *
 
 # What lights to control
@@ -23,17 +22,16 @@ mqtt_server = "127.0.0.1"
 mqtt_port = 1883
 
 # Connect to the MQTT server
-client = mqtt.Client()
-client.connect(mqtt_server, mqtt_port, 60)
+connect(mqtt_server, mqtt_port)
 
 # Make sure the lights are on
-all_lights_on()
+all_lights_on(lights)
 
 # Switch lights off on exit
-signal.signal(signal.SIGINT, shutdown_signal_handler)
+signal.signal(signal.SIGINT, make_shutdown_signal_handler(lights))
 
 # Keep picking new colours between pauses
 while True:
-  nc = random_hex_colour()
-  send_all({"color":nc, "transition":transition})
+  nc = random_hex_colour(min_change=min_change)
+  send_all(lights, {"color":nc, "transition":transition})
   time.sleep(change_every)
