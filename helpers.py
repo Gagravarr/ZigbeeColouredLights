@@ -32,6 +32,8 @@ def connect(mqtt_server, mqtt_port):
 def send_all(lights, message):
    if isinstance(message, dict):
       message = json.dumps(message)
+   if isinstance(lights, str):
+      lights = [lights]
    for light in lights:
       topic = "%s/%s/set" % (_base_topic, light)
       _client.publish(topic, payload=message)

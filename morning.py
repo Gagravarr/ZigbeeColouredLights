@@ -4,13 +4,14 @@
 #  white light, over a few hours. Via Zigbee2MQTT
 # https://www.zigbee2mqtt.io/devices/ZB-RGBCW.html#light
 
-import paho.mqtt.client as mqtt
 import random, json, math, time
 import signal, sys
 import numpy
+from helpers import send_all as _send_all, connect
 
-# What lights to control
-lights = ("Floor0/Dining/LightLeft","Floor0/Dining/LightRight")
+# What lights to control? 
+##lights = ("Floor0/Dining/LightLeft","Floor0/Dining/LightRight")
+lights = ("Floor0/Dining/Lights")
 # What colour temperatures to move between?
 colour_temp_range = (500,200)
 # What brightnesses to move between?
@@ -31,17 +32,11 @@ mqtt_server = "127.0.0.1"
 mqtt_port = 1883
 
 # Connect to the MQTT server
-client = mqtt.Client()
-client.connect(mqtt_server, mqtt_port, 60)
+client = connect(mqtt_server, mqtt_port)
 
 # Send the same message to each light's topic
 def send_all(message):
-   if isinstance(message, dict):
-      message = json.dumps(message)
-   for light in lights:
-      topic = "%s/%s/set" % (base_topic, light)
-      client.publish(topic, payload=message)
-      time.sleep(0.05)
+   _send_all(lights, message)
 
 
 # How many transitions to have, and how long?
@@ -64,8 +59,9 @@ finishes = zip(
 def as_json(temp, bright):
    return {"color_temp":"%d"%temp, "brightness":"%d"%bright}
 
-# Make sure the lights are on
+# Make sure the lights are on, and ready
 send_all({"state":"on"})
+time.sleep(0.5)
 
 # Switch lights off on exit
 def signal_handler(sig, frame):
