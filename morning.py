@@ -4,14 +4,13 @@
 #  white light, over a few hours. Via Zigbee2MQTT
 # https://www.zigbee2mqtt.io/devices/ZB-RGBCW.html#light
 
-import random, json, math, time
-import signal, sys
-import numpy
-from helpers import send_all as _send_all, connect
+import signal, time
+import numpy, math
+from helpers import *
 
 # What lights to control? 
-##lights = ("Floor0/Dining/LightLeft","Floor0/Dining/LightRight")
-lights = ("Floor0/Dining/Lights")
+lights = ("Floor0/Dining/LightLeft","Floor0/Dining/LightRight")
+##lights = ("Floor0/Dining/Lights")
 # What colour temperatures to move between?
 colour_temp_range = (500,200)
 # What brightnesses to move between?
@@ -24,19 +23,14 @@ finish_seconds = 10 * 60
 minimum_pause = 15
 
 # Should we report what we're doing?
-verbose = True
+verbose = set_verbose(True)
 
 # MQTT details
-base_topic = "zigbee2mqtt"
 mqtt_server = "127.0.0.1"
 mqtt_port = 1883
 
 # Connect to the MQTT server
 client = connect(mqtt_server, mqtt_port)
-
-# Send the same message to each light's topic
-def send_all(message):
-   _send_all(lights, message)
 
 
 # How many transitions to have, and how long?
@@ -59,17 +53,17 @@ finishes = zip(
 def as_json(temp, bright):
    return {"color_temp":"%d"%temp, "brightness":"%d"%bright}
 
+# Initialise the lights to the initial state, before switching on
+# TODO
+
 # Make sure the lights are on, and ready
-send_all({"state":"on"})
+# TODO Set them to the initial before turning on
+all_lights_on(lights)
 time.sleep(0.5)
 
 # Switch lights off on exit
-def signal_handler(sig, frame):
-   print('Shutting down')
-   send_all({"state":"off"})
-   client.disconnect()
-   sys.exit(0)
-signal.signal(signal.SIGINT, signal_handler)
+shutdown = make_shutdown_signal_handler(lights)
+signal.signal(signal.SIGINT, shutdown)
 
 # Do the wakeup, then the finish
 for stage,pause,data in (
@@ -79,8 +73,9 @@ for stage,pause,data in (
   for temp, bright in data:
      if verbose:
         print(" * Colour Temperature %d, Brightness %d" % (temp, bright))
-     send_all( as_json(temp,bright) )
+     message = as_json(temp,bright)
+     send_all(lights, message)
      time.sleep(pause)
 
-# Shutdown
-signal_handler(None,None)
+# Turn off lights and finish
+shutdown(None,None)

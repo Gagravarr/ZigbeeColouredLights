@@ -16,8 +16,10 @@ _client = None
 
 def set_base_topic(topic):
    _base_topic = topic
+   return topic
 def set_verbose(verbose=True):
    _verbose = verbose
+   return verbose
 
 def connect(mqtt_server, mqtt_port):
    global _client
