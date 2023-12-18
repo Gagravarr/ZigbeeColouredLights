@@ -6,6 +6,7 @@
 
 import signal, time
 import numpy, math
+from collections import namedtuple
 from helpers import *
 
 # What lights to control? 
@@ -39,6 +40,7 @@ finish_changes = min(10, math.ceil(finish_seconds/minimum_pause))
 wakeup_pause = wakeup_seconds/wakeup_changes
 finish_pause = finish_seconds/finish_changes
 
+
 # Calculate the transitions
 wakeups = zip(
    numpy.linspace(colour_temp_range[0],colour_temp_range[1],wakeup_changes,dtype="int"),
@@ -49,15 +51,22 @@ finishes = zip(
    numpy.linspace(brightness_range[1],brightness_range[0],finish_changes,dtype="int")
 )
 
-# Builds the JSON for a state
-def as_json(temp, bright):
-   return {"color_temp":"%d"%temp, "brightness":"%d"%bright}
+
+# Builds up the JSON and pauses for everything
+spds = []
+SPD = namedtuple("SPD",["stage","pause","data","summary"])
+for stage,pause,data in (
+        ("Wakeup",wakeup_pause,wakeups),("Finish",finish_pause,finishes)):
+   for temp, bright in data:
+      setting = {"color_temp":"%d"%temp, "brightness":"%d"%bright}
+      summary = "Colour Temperature %d, Brightness %d" % (temp, bright)
+      spds.append(SPD(stage,pause,setting,summary))
+
 
 # Initialise the lights to the initial state, before switching on
-# TODO
+send_all(lights, spds[0].data)
 
 # Make sure the lights are on, and ready
-# TODO Set them to the initial before turning on
 all_lights_on(lights)
 time.sleep(0.5)
 
@@ -65,17 +74,13 @@ time.sleep(0.5)
 shutdown = make_shutdown_signal_handler(lights)
 signal.signal(signal.SIGINT, shutdown)
 
-# Do the wakeup, then the finish
-for stage,pause,data in (
-        ("Wakeup",wakeup_pause,wakeups),("Finish",finish_pause,finishes)):
+# Move through all the stages
+for spd in spds:
   if verbose:
-     print("%s - pause %1.1f" % (stage,pause))
-  for temp, bright in data:
-     if verbose:
-        print(" * Colour Temperature %d, Brightness %d" % (temp, bright))
-     message = as_json(temp,bright)
-     send_all(lights, message)
-     time.sleep(pause)
+     print("%s (%d secs) - %s" % (spd.stage,spd.pause,spd.summary))
+  send_all(lights, spd.data)
+  time.sleep(spd.pause)
 
 # Turn off lights and finish
-shutdown(None,None)
+all_lights_off(lights)
+time.sleep(5)
