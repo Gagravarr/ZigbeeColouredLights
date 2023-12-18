@@ -2,6 +2,8 @@
 # Random slowly changing light colours, via Zigbee2MQTT
 # For RGB-CCT LED strips
 # https://www.zigbee2mqtt.io/devices/ZB-RGBCW.html#light
+#
+# TODO Support a button to turn off/exit
 
 import signal
 from helpers import *
