@@ -50,11 +50,11 @@ def all_lights_off(lights):
 # Switch lights off on exit
 def make_shutdown_signal_handler(lights):
    def shutdown_signal_handler(sig, frame):
-      print('Shutting down...  ', end='')
+      print('Shutting down...  ', end='', flush=True)
       all_lights_off(lights)
       time.sleep(2)
       _client.disconnect()
-      print('... Shutdown complete')
+      print('...Shutdown complete')
       sys.exit(0)
    return shutdown_signal_handler
 
