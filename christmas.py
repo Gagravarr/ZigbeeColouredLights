@@ -13,9 +13,11 @@ lights = ["Floor0/Dining/LightLeft","Floor0/Dining/LightRight"]
 # What is the minimum change in colour each time?
 min_change = 0.2
 # How long to spend changing each colour
-transition = 5
+transition = 8
 # How long between colour changes (needs to include transition!)
 change_every = transition*2
+# What brightness to use. (None to not change it)
+brightness = 120
 # Should we report what colour we're picking next?
 set_verbose(False)
 
@@ -28,6 +30,10 @@ connect(mqtt_server, mqtt_port)
 
 # Make sure the lights are on
 all_lights_on(lights)
+
+# Set a brightness, if desired
+if brightness:
+  send_all(lights, {"brightness": brightness})
 
 # Switch lights off on exit
 signal.signal(signal.SIGINT, make_shutdown_signal_handler(lights))
