@@ -84,3 +84,6 @@ for spd in spds:
 # Turn off lights and finish
 all_lights_off(lights)
 time.sleep(5)
+
+if verbose:
+   print("Good morning! Wakup complete")
