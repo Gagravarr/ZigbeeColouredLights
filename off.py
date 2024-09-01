@@ -16,7 +16,7 @@ mqtt_port = 1883
 # Connect to the MQTT server
 connect(mqtt_server, mqtt_port)
 
-# Make sure the lights are on
+# Make sure the lights are off
 all_lights_off(lights)
 
 # Wait for that to go through before disconnecting
