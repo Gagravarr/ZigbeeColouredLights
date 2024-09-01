@@ -11,19 +11,23 @@ import random, json, time
 import colorsys, sys
 
 _base_topic = "zigbee2mqtt"
+_callbacks = {}
 _verbose = False
 _client = None
 
 def set_base_topic(topic):
+   global _base_topic
    _base_topic = topic
    return topic
 def set_verbose(verbose=True):
+   global _verbose
    _verbose = verbose
    return verbose
 
 def connect(mqtt_server, mqtt_port):
    global _client
    _client = mqtt.Client()
+   _client.on_message = _receive
    _client.connect(mqtt_server, mqtt_port, 60)
    return _client
 
@@ -41,6 +45,7 @@ def send_all(lights, message):
       _client.publish(topic, payload=message)
       time.sleep(0.05)
 
+# Switch all lights on / off
 def all_lights_on(lights):
    send_all(lights, {"state":"on"})
 
@@ -57,6 +62,25 @@ def make_shutdown_signal_handler(lights):
       print('...Shutdown complete')
       sys.exit(0)
    return shutdown_signal_handler
+
+# Listens for a button topic, and triggers the callback when received
+def receive(button, callback):
+  global _callbacks
+  if _verbose:
+    print("Listening for button presses: %s" % button)
+  topic = "%s/%s" % (_base_topic, button)
+  _client.subscribe(topic)
+  _callbacks[topic] = callback
+
+def _receive(client, data, message):
+  callback = _callbacks.get(message.topic, None)
+  if callback:
+    data = json.loads(message.payload)
+    if _verbose:
+      print("Topic %s: %s" % (message.topic, data))
+    callback(data)
+  else:
+    print("Unexpected message on topic %s: %s" % (message.topic, message.payload))
 
 
 last_h = 0.0
