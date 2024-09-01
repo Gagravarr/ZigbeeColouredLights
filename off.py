@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # Ensures that the RGB-CCT lights have turned off, via Zigbee2MQTT
 
-import signal
 from helpers import *
 
 # What lights to control
