@@ -103,3 +103,8 @@ def random_hex_colour(min_change=0.0):
      print("".join('{:02X}'.format(v) for v in rgb))
   nc = {"r":rgb[0], "g":rgb[1], "b":rgb[2]}
   return nc
+
+def random_temperature_brightness(temp_range, bright_range):
+  temp = random.randint(temp_range[0], temp_range[1])
+  bright = random.randint(bright_range[0], bright_range[1])
+  return [temp, bright]

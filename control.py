@@ -16,6 +16,13 @@ verbose = set_verbose(True)
 # How long to listen for, unless specified as an argument
 run_minutes = 60
 
+# What colour temperatures to move between?
+colour_temp_range = (200,500)
+# What brightnesses to move between?
+brightness_range = (20,200)
+# How long to spend changing
+transition = 8
+
 # MQTT details
 mqtt_server = "127.0.0.1"
 mqtt_port = 1883
@@ -28,19 +35,26 @@ signal.signal(signal.SIGINT, make_shutdown_signal_handler(lights))
 
 # Begin with all lights off
 all_lights_off(lights)
+# TODO Support going to a specific initial state other than off
 
 # The current state
 LightState = Enum("LightState", ["Off","White","Colour","Changing"])
 state = LightState.Off
 
-# Moves to the next state, with wraparound to Off
+# Moves to the next state, handling on/off as needed
 def next_state():
   global state
-  ns = state.value + 1
-  if ns in LightState:
-    state = LightState(ns)
-  else:
-    state = LightState.Off
+
+  nsv = state.value + 1
+  nextstate = LightState(nsv) if (nsv in LightState) else list(LightState)[0]
+  if verbose:
+    print("Lights state changing from %s to %s" % (state.name, nextstate.name))
+
+  if state == LightState.Off:
+    all_lights_on(lights)
+  if nextstate == LightState.Off:
+    all_lights_off(lights)
+  state = nextstate
 
 # Handles button presses
 def button_pressed(msg):
@@ -49,29 +63,31 @@ def button_pressed(msg):
   # Single or Double press?
   double = msg.get("action",None) == "double"
 
-  # If it's off, anything means turn on
-  if state == LightState.Off:
-    if verbose:
-      print("Turning the lights on")
-    all_lights_on(lights)
+  # To change state, Double or be Off
+  if state == LightState.Off or double:
     next_state()
-    return
-
-  # If it's double, move to the next state
-  if double:
-    next_state()
-
-    if state == LightState.Off:
-      if verbose:
-        print("Turning the lights off")
-      state = LightState.Off.value
-      all_lights_off(lights)
-      return
-    if verbose:
-      print("Lights state changed to %s" % state.name)
 
   # Change to the next setting of the current/new state
-  # TODO
+  if state == LightState.Off:
+    return
+  if state == LightState.White:
+    temp, bright = random_temperature_brightness(colour_temp_range, brightness_range)
+    settings = {"color_temp":"%d"%temp, "brightness":"%d"%bright}
+    if verbose:
+      print("Picking Colour Temperature %d, Brightness %d" % (temp,bright))
+    send_all(lights, settings)
+  else:
+    pick_random_colour()
+
+def pick_random_colour():
+  temp, bright = random_temperature_brightness(colour_temp_range, brightness_range)
+  nc = random_hex_colour(min_change=0.1)
+  settings = {"color":nc, "brightness":"%d"%bright}
+  if state == LightState.Changing:
+    settings["transition"] = transition
+  if verbose:
+    print("Picking Colour %s, Brightness %d" % (nc,bright))
+  send_all(lights, settings)
 
 # Listen to the button
 receive(button, button_pressed)
@@ -82,3 +98,6 @@ print("Now waiting...")
 client.loop_start()
 time.sleep(run_minutes * 60)
 # TODO support changing
+
+# Finish by turning off
+all_lights_off(lights)
