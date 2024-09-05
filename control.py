@@ -14,14 +14,15 @@ button = "Floor0/Dining/SwitchLight"
 # Should we report what we're doing?
 verbose = set_verbose(True)
 # How long to listen for, unless specified as an argument
-run_minutes = 60
+run_seconds = time_arguments([60*60])
+stop_at = time.time() + run_seconds
 
 # What colour temperatures to move between?
 colour_temp_range = (200,500)
 # What brightnesses to move between?
 brightness_range = (20,200)
 # How long to spend changing
-transition = 8
+transition = default_transition = 4
 
 # MQTT details
 mqtt_server = "127.0.0.1"
@@ -43,7 +44,7 @@ state = LightState.Off
 
 # Moves to the next state, handling on/off as needed
 def next_state():
-  global state
+  global state, transition
 
   nsv = state.value + 1
   nextstate = LightState(nsv) if (nsv in LightState) else list(LightState)[0]
@@ -54,11 +55,13 @@ def next_state():
     all_lights_on(lights)
   if nextstate == LightState.Off:
     all_lights_off(lights)
+  if nextstate == LightState.Changing:
+    transition = default_transition
   state = nextstate
 
 # Handles button presses
 def button_pressed(msg):
-  global state
+  global state, transition
 
   # Single or Double press?
   double = msg.get("action",None) == "double"
@@ -77,9 +80,19 @@ def button_pressed(msg):
       print("Picking Colour Temperature %d, Brightness %d" % (temp,bright))
     send_all(lights, settings)
   else:
+    if state == LightState.Changing and not double:
+      transition += default_transition
+      if transition > default_transition*5:
+        transition = default_transition
+      if verbose:
+        print("Transition time now %d, Changes every %d" % (transition, transition*4))
     pick_random_colour()
 
+next_change_at = 0
 def pick_random_colour():
+  global next_change_at
+  next_change_at = time.time() + transition*4
+
   temp, bright = random_temperature_brightness(colour_temp_range, brightness_range)
   nc = random_hex_colour(min_change=0.1)
   settings = {"color":nc, "brightness":"%d"%bright}
@@ -93,11 +106,13 @@ def pick_random_colour():
 receive(button, button_pressed)
 print("Now waiting...")
 
-
-# TODO Check the arguments to see how long to listen for
+# Run until the limit, changing as needed
 client.loop_start()
-time.sleep(run_minutes * 60)
-# TODO support changing
+while time.time() < stop_at:
+  time.sleep(2)
+
+  if state == LightState.Changing and time.time() > next_change_at:
+    pick_random_colour()
 
 # Finish by turning off
 all_lights_off(lights)

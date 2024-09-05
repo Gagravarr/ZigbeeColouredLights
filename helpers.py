@@ -125,4 +125,6 @@ def time_arguments(defaults):
       times.append( (then-now).seconds )
     else:
       times.append(int(given))
+  if len(times) == 1:
+    return times[0]
   return times
