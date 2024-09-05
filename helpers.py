@@ -7,8 +7,8 @@
 # https://www.zigbee2mqtt.io/devices/ZB-RGBCW.html#light
 
 import paho.mqtt.client as mqtt
-import random, json, time
-import colorsys, sys
+import random, json, time, sys
+import colorsys, datetime
 
 _base_topic = "zigbee2mqtt"
 _callbacks = {}
@@ -108,3 +108,21 @@ def random_temperature_brightness(temp_range, bright_range):
   temp = random.randint(temp_range[0], temp_range[1])
   bright = random.randint(bright_range[0], bright_range[1])
   return [temp, bright]
+
+
+def time_arguments(defaults):
+  args = sys.argv[1:]
+  times = []
+  for idx, default in enumerate(defaults):
+    given = args[idx] if len(args) > idx else default
+    if ":" in str(given):
+      hours, mins = [int(x) for x in given.split(":")]
+
+      now = datetime.datetime.now()
+      then = now.replace(hour=hours, minute=mins)
+      if then < now:
+        then = then + datetime.timedelta(days=1)
+      times.append( (then-now).seconds )
+    else:
+      times.append(int(given))
+  return times

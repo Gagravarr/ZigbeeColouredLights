@@ -16,9 +16,9 @@ lights = ("Floor0/Dining/LightLeft","Floor0/Dining/LightRight")
 colour_temp_range = (500,200)
 # What brightnesses to move between?
 brightness_range = (20,200)
-# How long to spend "waking up"
+# How long to spend "waking up", by default
 wakeup_seconds = 80 * 60
-# How long to switch off over
+# How long to "cooling down" until switch-off, by default
 finish_seconds = 10 * 60
 # Minimum gap between changes
 minimum_pause = 15
@@ -33,6 +33,9 @@ mqtt_port = 1883
 # Connect to the MQTT server
 client = connect(mqtt_server, mqtt_port)
 
+# How long for the wakeup and cool-down?
+wakeup_seconds, finish_seconds = time_arguments(
+  (wakeup_seconds, finish_seconds))
 
 # How many transitions to have, and how long?
 wakeup_changes = min(20, math.ceil(wakeup_seconds/minimum_pause))
